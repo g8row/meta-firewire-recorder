@@ -1,0 +1,28 @@
+#!/bin/sh
+### BEGIN INIT INFO
+# Provides:          rock2f-tweaks
+# Required-Start:    $local_fs $syslog
+# Required-Stop:
+# Default-Start:     5
+# Default-Stop:      0 6
+# Short-Description: ROCK 2F hardware quirk fixes (rfkill unblock)
+### END INIT INFO
+
+case "$1" in
+    start)
+        # The AIC8800D80 driver sets a software rfkill block on its first USB
+        # enumeration.  Unblock all soft-blocked radios so wlan0 and hci0
+        # can be brought up without manual intervention.
+        if command -v rfkill > /dev/null 2>&1; then
+            rfkill unblock all
+        fi
+        ;;
+    stop|restart|reload)
+        ;;
+    *)
+        echo "Usage: $0 {start|stop}" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
