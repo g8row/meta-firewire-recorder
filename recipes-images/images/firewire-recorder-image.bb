@@ -4,7 +4,11 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 EXTRA_IMAGE_FEATURES += "package-management ssh-server-openssh"
 
+# Layer-local WKS keeps rootfs mount options under our control.
+#WKS_FILE = "firewire-recorder-gptdisk.wks.in"
+
 IMAGE_INSTALL:append = " \
+    systemd \
     openssh \
     connman \
     python3 \
@@ -71,4 +75,12 @@ disable_unused_services() {
     done
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " pregenearte_ssh_host_keys; disable_unused_services; "
+# OE-core ships a default preset that disables everything. Ensure NTP sync
+# starts automatically on boot for boards without battery-backed RTC.
+enable_systemd_timesyncd() {
+    install -d ${IMAGE_ROOTFS}/etc/systemd/system/sysinit.target.wants
+    ln -sf /lib/systemd/system/systemd-timesyncd.service \
+        ${IMAGE_ROOTFS}/etc/systemd/system/sysinit.target.wants/systemd-timesyncd.service
+}
+
+ROOTFS_POSTPROCESS_COMMAND:append = " pregenearte_ssh_host_keys; disable_unused_services; enable_systemd_timesyncd; "

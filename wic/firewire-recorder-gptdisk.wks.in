@@ -1,0 +1,13 @@
+# Copyright (c) 2026
+# Released under the MIT license (see COPYING.MIT for the terms)
+#
+# GPT disk layout for FireWire recorder on Rockchip.
+# Rootfs gets x-systemd.growfs so systemd expands the filesystem to the final
+# partition size during early boot.
+
+bootloader --ptable gpt
+part --source rawcopy --sourceparams="file=idblock.img" --align 32 --no-table
+part --source rawcopy --sourceparams="file=uboot.img" --part-name uboot --offset 2M
+part --source rawcopy --sourceparams="file=trust.img" --part-name trust --align 4
+part --source rawcopy --sourceparams="file=boot.img" --part-name boot --align 4
+part / --source rootfs --fstype ${RK_ROOTFS_TYPE} --part-name rootfs --uuid ${RK_ROOTDEV_UUID} --mkfs-extraopts "${RK_ROOTFS_EXTRAOPTS}" --fsoptions "defaults,x-systemd.growfs" --align 8192

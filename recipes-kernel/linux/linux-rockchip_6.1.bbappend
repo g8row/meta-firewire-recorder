@@ -5,4 +5,4 @@ FILESEXTRAPATHS:prepend := "${THISDIR}/files:"
 SRC_URI += "file://firewire.cfg"
 
 # Force PCIe Gen1 to prevent DWC auto-speed-change from collapsing the link
-SRC_URI += "file://pcie-gen1-only.patch"
+#SRC_URI += "file://pcie-gen1-only.patch"
