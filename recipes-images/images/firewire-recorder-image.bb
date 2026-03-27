@@ -4,6 +4,9 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 EXTRA_IMAGE_FEATURES += "package-management ssh-server-openssh"
 
+# Set to "0" to build a pure software-encode image.
+FIREWIRE_ENABLE_RKMPP ?= "1"
+
 # Layer-local WKS keeps rootfs mount options under our control.
 #WKS_FILE = "firewire-recorder-gptdisk.wks.in"
 
@@ -36,8 +39,11 @@ IMAGE_INSTALL:append = " \
     vim \
     connman-tools \
     ffmpeg \
+    x264 \
     dvgrab \
 "
+
+IMAGE_INSTALL:append = "${@bb.utils.contains('FIREWIRE_ENABLE_RKMPP', '1', ' rockchip-mpp v4l-rkmpp v4l-utils gstreamer1.0-rockchip gstreamer1.0 udev-conf-rockchip', '', d)}"
 
 IMAGE_LINGUAS = " "
 
