@@ -4,8 +4,10 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 EXTRA_IMAGE_FEATURES += "package-management ssh-server-openssh"
 
-# Set to "0" to build a pure software-encode image.
-FIREWIRE_ENABLE_RKMPP ?= "1"
+# Hardware encode via the Rockchip MPP stack requires the vendor BSP kernel
+# and the vendor meta-rockchip fork; neither is available in this wrynose
+# setup (mainline kernel), so default to software encode.
+FIREWIRE_ENABLE_RKMPP ?= "0"
 
 # Layer-local WKS keeps rootfs mount options under our control.
 #WKS_FILE = "firewire-recorder-gptdisk.wks.in"
@@ -19,8 +21,6 @@ IMAGE_INSTALL:append = " \
     i2c-tools \
     e2fsprogs-resize2fs \
     wireless-regdb \
-    kernel-module-aic8800 \
-    rkwifibt-firmware-aic8800d80-usb \
     rock2f-tweaks \
     iw \
     rfkill \
@@ -58,6 +58,10 @@ inherit core-image
 #    takes ~3 seconds). Baking them in makes every boot equally fast.
 #    Keys are host-specific only in the sense that they identify this image
 #    instance; for a dedicated appliance that is fine.
+# ssh-keygen comes from the native sysroot (the build host's is not in
+# HOSTTOOLS on wrynose).
+do_rootfs[depends] += "openssh-native:do_populate_sysroot"
+
 pregenearte_ssh_host_keys() {
     SSH_DIR="${IMAGE_ROOTFS}/etc/ssh"
     for type in rsa ecdsa ed25519; do

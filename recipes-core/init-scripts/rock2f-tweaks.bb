@@ -13,7 +13,7 @@ SRC_URI = "file://rock2f-tweaks.init"
 
 do_install() {
     install -d "${D}${sysconfdir}/init.d"
-    install -m 0755 "${WORKDIR}/rock2f-tweaks.init" "${D}${sysconfdir}/init.d/rock2f-tweaks"
+    install -m 0755 "${UNPACKDIR}/rock2f-tweaks.init" "${D}${sysconfdir}/init.d/rock2f-tweaks"
 }
 
 FILES:${PN} = " \

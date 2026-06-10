@@ -8,7 +8,6 @@ SRC_URI = "git://github.com/ddennedy/dvgrab.git;protocol=https;branch=master;nob
 SRCREV = "6a57bdaa7fbdb774f75fc12481af5df32b137ca3"
 
 PV = "3.5+git"
-S = "${WORKDIR}/git"
 
 inherit autotools pkgconfig
 
