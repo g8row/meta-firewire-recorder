@@ -10,6 +10,7 @@ INITSCRIPT_NAME:${PN} = "rock2f-tweaks"
 INITSCRIPT_PARAMS:${PN} = "start 99 5 . stop 01 0 6 ."
 
 SRC_URI = "file://rock2f-tweaks.init"
+S = "${UNPACKDIR}"
 
 do_install() {
     install -d "${D}${sysconfdir}/init.d"
