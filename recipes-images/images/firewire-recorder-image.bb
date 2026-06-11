@@ -23,6 +23,7 @@ IMAGE_INSTALL:append = " \
     systemd \
     openssh \
     connman \
+    connman-client \
     python3 \
     python3-pip \
     i2c-tools \
@@ -45,6 +46,8 @@ IMAGE_INSTALL:append = " \
     nano \
     vim \
     connman-tools \
+    kmod \
+    devmem2 \
     ffmpeg \
     x264 \
     dvgrab \
