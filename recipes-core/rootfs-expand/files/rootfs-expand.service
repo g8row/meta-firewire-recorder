@@ -1,0 +1,14 @@
+[Unit]
+Description=Expand rootfs partition and filesystem to fill the disk (first boot only)
+After=local-fs.target
+Before=companion-api.service companion-net.service mediamtx.service
+ConditionPathExists=!/var/lib/rootfs-expand.done
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/sbin/rootfs-expand.sh
+ExecStartPost=/bin/touch /var/lib/rootfs-expand.done
+
+[Install]
+WantedBy=multi-user.target

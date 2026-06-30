@@ -8,6 +8,13 @@ EXTRA_IMAGE_FEATURES += "package-management ssh-server-openssh"
 FIREWIRE_ENABLE_RKMPP ?= "1"
 
 # Layer-local WKS keeps rootfs mount options under our control.
+# NOT enabled: this custom layout uses `--source rawcopy` for the
+# bootloader/trust/boot partitions, sourced from files this layer doesn't
+# produce (presumably staged by the Rockchip BSP layer's own recipes).
+# Switching to it is untested here — verify the rawcopy sources resolve
+# before enabling, ideally on a build host with the full layer set.
+# rootfs-expand (below) does NOT depend on this being enabled — it grows
+# the partition table entry directly with parted, regardless of WKS.
 #WKS_FILE = "firewire-recorder-gptdisk.wks.in"
 
 IMAGE_INSTALL:append = " \
@@ -43,6 +50,7 @@ IMAGE_INSTALL:append = " \
     dvgrab \
     companion \
     dnsmasq \
+    rootfs-expand \
 "
 
 IMAGE_INSTALL:append = "${@bb.utils.contains('FIREWIRE_ENABLE_RKMPP', '1', ' rockchip-mpp v4l-rkmpp v4l-utils gstreamer1.0-rockchip gstreamer1.0 udev-conf-rockchip', '', d)}"
