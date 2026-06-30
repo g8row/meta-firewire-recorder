@@ -1,41 +1,22 @@
 SUMMARY = "equip-1 companion: HTTP API, web UI, and BLE provisioning daemon"
-DESCRIPTION = "Two statically-linked Go binaries – companion-api (HTTP server + \
-embedded React UI + mediamtx lifecycle manager) and companion-net (BLE GATT \
-server + ConnMan WiFi provisioning) – plus the mediamtx arm64 binary and their \
-systemd units. \
-The Go binaries are cross-compiled outside Yocto (CGO_ENABLED=0); copy the \
-pre-built arm64 executables into files/ before baking the image. See the \
-deploy/ directory in the companion repository and the cross-compile section of \
-its README."
+DESCRIPTION = "Two Go binaries built from source by this recipe – companion-api \
+(HTTP server + embedded React UI + mediamtx lifecycle manager) and \
+companion-net (BLE GATT server + ConnMan WiFi provisioning) – plus the \
+mediamtx relay (fetched as a prebuilt arm64 release, it's a large third-party \
+project) and systemd units to run them all."
 HOMEPAGE = "https://github.com/g8row/equip-1"
 LICENSE = "MIT"
 LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda2f7b4f302"
 
-# ---------------------------------------------------------------------------
-# Pre-built binary preparation (run before `bitbake firewire-recorder-image`)
-# ---------------------------------------------------------------------------
-# 1. Build the companion binaries:
-#      cd companion/server
-#      GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
-#        go build -o ../deploy/bin/companion-api ./cmd/companion-api
-#      GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
-#        go build -o ../deploy/bin/companion-net ./cmd/companion-net
-#
-# 2. Download mediamtx arm64 release (v1.19.2 or later):
-#      curl -L https://github.com/bluenviron/mediamtx/releases/download/v1.19.2/\
-#        mediamtx_v1.19.2_linux_arm64v8.tar.gz | tar -C companion/deploy/bin -xz mediamtx
-#
-# 3. Copy all into this recipe's files/ directory:
-#      cp companion/deploy/bin/companion-api  <this-layer>/recipes-core/companion/files/
-#      cp companion/deploy/bin/companion-net  <this-layer>/recipes-core/companion/files/
-#      cp companion/deploy/bin/mediamtx      <this-layer>/recipes-core/companion/files/
-#      cp companion/deploy/mediamtx.yml      <this-layer>/recipes-core/companion/files/
-# ---------------------------------------------------------------------------
+# Pin to a commit on g8row/equip-1 main. Bump after pushing companion changes:
+#   git ls-remote https://github.com/g8row/equip-1.git main
+SRCREV = "a172b8ba50d5d3c3baff8a70fa4ca86b037ae1e4"
+
+MEDIAMTX_VERSION = "1.19.2"
 
 SRC_URI = " \
-    file://companion-api \
-    file://companion-net \
-    file://mediamtx \
+    git://github.com/g8row/equip-1.git;protocol=https;branch=main \
+    https://github.com/bluenviron/mediamtx/releases/download/v${MEDIAMTX_VERSION}/mediamtx_v${MEDIAMTX_VERSION}_linux_arm64v8.tar.gz;name=mediamtx;subdir=mediamtx-release \
     file://companion-api.service \
     file://companion-net.service \
     file://mediamtx.service \
@@ -43,27 +24,43 @@ SRC_URI = " \
     file://mediamtx.yml \
 "
 
-inherit systemd
+# TODO: verify and fill in — run `bitbake companion -c fetch` once, bitbake
+# will print the actual sha256 mismatch error with the correct value to paste
+# here. Left blank deliberately rather than guessing.
+SRC_URI[mediamtx.sha256sum] = ""
 
-# Enable all companion + infrastructure services at image boot.
-# rfkill-unblock must run before bluetooth.service (AIC8800 quirk).
-SYSTEMD_SERVICE:${PN} = " \
-    rfkill-unblock.service \
-    companion-api.service \
-    companion-net.service \
-    mediamtx.service \
-"
-SYSTEMD_AUTO_ENABLE = "enable"
+# The repo root is the monorepo `equip-1`; the Go module lives under companion/server.
+S = "${WORKDIR}/git/companion/server"
 
-# bluez5 provides bluetooth.service; connman provides WiFi management.
-RDEPENDS:${PN} = "bluez5 connman systemd"
+inherit go systemd
+
+GO_IMPORT = "equip1/companion/server"
+
+# go.mod has no vendor/ dir checked in, so module resolution needs network
+# access on first fetch. If your distro config sets BB_NO_NETWORK globally,
+# this task-level override still requires PREMIRROR/proxy reachability for
+# proxy.golang.org, or you must `go mod vendor` and check vendor/ into the
+# repo so do_compile is fully offline.
+do_compile[network] = "1"
+
+# go.bbclass's default do_compile builds GO_IMPORT as a single package; we
+# need two distinct binaries from cmd/, so override it.
+do_compile() {
+    export GOARCH GOOS CGO_ENABLED=0
+    export GOFLAGS="-mod=mod -trimpath"
+    cd ${S}
+    ${GO} build -o ${B}/companion-api ./cmd/companion-api
+    ${GO} build -o ${B}/companion-net ./cmd/companion-net
+}
 
 do_install() {
-    # --- binaries ---
+    # --- binaries built above ---
     install -d ${D}${bindir}
-    install -m 0755 ${WORKDIR}/companion-api  ${D}${bindir}/companion-api
-    install -m 0755 ${WORKDIR}/companion-net  ${D}${bindir}/companion-net
-    install -m 0755 ${WORKDIR}/mediamtx       ${D}${bindir}/mediamtx
+    install -m 0755 ${B}/companion-api ${D}${bindir}/companion-api
+    install -m 0755 ${B}/companion-net ${D}${bindir}/companion-net
+
+    # --- mediamtx, fetched as a prebuilt release (third-party, not ours) ---
+    install -m 0755 ${WORKDIR}/mediamtx-release/mediamtx ${D}${bindir}/mediamtx
 
     # --- systemd unit files ---
     install -d ${D}${systemd_system_unitdir}
@@ -77,12 +74,20 @@ do_install() {
     install -m 0644 ${WORKDIR}/mediamtx.yml ${D}${sysconfdir}/mediamtx.yml
 
     # --- enable bluetooth.service so BLE is ready before companion-net starts ---
-    # bluetooth.service is owned by bluez5; we enable it from here so our
-    # single recipe handles the full companion bring-up dependency.
     install -d ${D}${systemd_system_unitdir}/multi-user.target.wants
     ln -sf ${systemd_system_unitdir}/bluetooth.service \
         ${D}${systemd_system_unitdir}/multi-user.target.wants/bluetooth.service
 }
+
+SYSTEMD_SERVICE:${PN} = " \
+    rfkill-unblock.service \
+    companion-api.service \
+    companion-net.service \
+    mediamtx.service \
+"
+SYSTEMD_AUTO_ENABLE = "enable"
+
+RDEPENDS:${PN} = "bluez5 connman systemd"
 
 FILES:${PN} += " \
     ${bindir}/companion-api \

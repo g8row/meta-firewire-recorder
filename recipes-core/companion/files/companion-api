@@ -1,5 +1,0 @@
-PLACEHOLDER – replace with a real arm64 binary before building the image.
-
-Cross-compile from companion/server:
-  GOOS=linux GOARCH=arm64 CGO_ENABLED=0 \
-    go build -o ../deploy/bin/companion-api ./cmd/companion-api

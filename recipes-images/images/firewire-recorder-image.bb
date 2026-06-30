@@ -42,6 +42,7 @@ IMAGE_INSTALL:append = " \
     x264 \
     dvgrab \
     companion \
+    dnsmasq \
 "
 
 IMAGE_INSTALL:append = "${@bb.utils.contains('FIREWIRE_ENABLE_RKMPP', '1', ' rockchip-mpp v4l-rkmpp v4l-utils gstreamer1.0-rockchip gstreamer1.0 udev-conf-rockchip', '', d)}"
