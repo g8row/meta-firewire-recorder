@@ -70,13 +70,16 @@ do_install() {
     install -m 0644 "${FDRV_DIR}/aic8800_fdrv.ko"    "${MODDIR}/"
     install -m 0644 "${BTUSB_DIR}/aic_btusb.ko"      "${MODDIR}/"
 
-    # Blacklist the mainline btusb so aic_btusb takes the a69c:8d80 interface
+    # Blacklist aic_btusb: the mainline btusb kernel module supports the
+    # AIC8800D80 (a69c:8d81) and registers a proper HCI device that BlueZ can
+    # use.  The vendor aic_btusb creates only /dev/aicbt_dev (char device) and
+    # requires a proprietary userspace BT stack — not suitable for BlueZ.
     install -d "${D}${sysconfdir}/modprobe.d"
-    echo "blacklist btusb" > "${D}${sysconfdir}/modprobe.d/aic_btusb.conf"
+    echo "blacklist aic_btusb" > "${D}${sysconfdir}/modprobe.d/aic_btusb.conf"
 
-    # Load order: aic_load_fw must come before aic8800_fdrv
+    # Load order: aic_load_fw → aic8800_fdrv (WiFi); btusb handles BT.
     install -d "${D}${sysconfdir}/modules-load.d"
-    printf "aic_load_fw\naic8800_fdrv\naic_btusb\n" \
+    printf "aic_load_fw\naic8800_fdrv\nbtusb\n" \
         > "${D}${sysconfdir}/modules-load.d/aic8800.conf"
 }
 

@@ -1,0 +1,93 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: equip-1 <equip1@local>
+Date: Mon, 30 Jun 2026 00:00:00 +0000
+Subject: [PATCH] btusb: Add AICSEMI AIC8800D80 with broken extended LE quirks
+
+The AIC8800D80 USB WiFi+BT combo chip (a69c:8d81) exposes a standard
+Bluetooth class interface (0xe0/0x01/0x01) and reports HCI/LMP version 5.4
+with HCI_LE_EXT_ADV set in its LE supported features.  BlueZ therefore issues
+extended LE advertising and scanning HCI commands.
+
+However, the chip firmware does not properly implement these BT5 extended
+commands.  The following errors appear in kernel logs:
+  Bluetooth: hci0: Opcode 0x2036 failed: -16  (LE_Set_Extended_Scan_Parameters)
+  Bluetooth: hci0: Opcode 0x2042 failed: -16  (LE_Set_Extended_Scan_Enable)
+  Bluetooth: hci0: Unable to disable scanning: -16
+
+Testing confirms that legacy LE commands (LE_Set_Advertising_Parameters/Data/
+Enable, LE_Set_Scan_Parameters/Enable) work correctly.
+
+Add AIC8800D80 to btusb_table[] before the generic class entry.  A dedicated
+setup function (btusb_setup_aic8800) sets HCI_QUIRK_BROKEN_EXT_SCAN so BlueZ
+uses legacy LE scan commands.
+
+Tested on Radxa Rock 2F (RK3528) with AIC8800D80, Linux 6.18.24-yocto.
+
+Signed-off-by: equip-1 <equip1@local>
+---
+ drivers/bluetooth/btusb.c | 33 +++++++++++++++++++++++++++++++++
+ 1 file changed, 33 insertions(+)
+
+diff --git a/drivers/bluetooth/btusb.c b/drivers/bluetooth/btusb.c
+index 1111111..2222222 100644
+--- a/drivers/bluetooth/btusb.c
++++ b/drivers/bluetooth/btusb.c
+@@ -66,6 +66,7 @@
+ #define BTUSB_INTEL_NO_WBS_SUPPORT	BIT(26)
+ #define BTUSB_ACTIONS_SEMI		BIT(27)
++#define BTUSB_AIC8800			BIT(28)
+
+ static const struct usb_device_id btusb_table[] = {
+ 	/* Generic Bluetooth USB device */
+@@ -70,6 +71,14 @@
+ 	/* Generic Bluetooth USB device */
+ 	{ USB_DEVICE_INFO(0xe0, 0x01, 0x01) },
+
++	/*
++	 * AICSEMI AIC8800D80 USB WiFi+BT combo (a69c:8d81).
++	 * Reports BT 5.4 but extended LE advertising and scanning HCI commands
++	 * fail with -EBUSY.  Legacy LE commands work correctly.
++	 * Must appear before the generic USB_DEVICE_INFO(0xe0,0x01,0x01) entry.
++	 */
++	{ USB_DEVICE(0xa69c, 0x8d81), .driver_info = BTUSB_AIC8800 },
++
+ 	/* Generic Bluetooth AMP device */
+ 	{ USB_DEVICE_INFO(0xe0, 0x01, 0x04), .driver_info = BTUSB_AMP },
+
+@@ -3717,6 +3725,20 @@
+ }
+
+ static DEVICE_ATTR_RW(isoc_alt);
++
++static int btusb_setup_aic8800(struct hci_dev *hdev)
++{
++	/*
++	 * AIC8800D80: the chip firmware reports BT 5.4 capability but does not
++	 * implement extended LE scan/adv HCI commands correctly.  Set the
++	 * broken-ext-scan quirk so the kernel BlueZ stack uses legacy
++ 	 * LE_Set_Scan_Parameters / LE_Set_Scan_Enable commands instead.
++	 *
++	 * Legacy LE advertising is handled in userspace via raw HCI commands
++	 * (see companion-net hciadv.go) pending a kernel-level broken-ext-adv
++	 * quirk being added to include/net/bluetooth/hci.h.
++	 */
++	set_bit(HCI_QUIRK_BROKEN_EXT_SCAN, &hdev->quirks);
++	return 0;
++}
+
+ static int btusb_probe(struct usb_interface *intf,
+ 		       const struct usb_device_id *id)
+@@ -4010,6 +4032,11 @@
+ 	if (id->driver_info & BTUSB_ACTIONS_SEMI) {
+ 		/* Support is advertised, but not implemented */
+ 		set_bit(HCI_QUIRK_BROKEN_ERR_DATA_REPORTING, &hdev->quirks);
+@@ -4020,6 +4042,11 @@
+ 		set_bit(HCI_QUIRK_BROKEN_WRITE_AUTH_PAYLOAD_TIMEOUT, &hdev->quirks);
+ 	}
+
++	if (id->driver_info & BTUSB_AIC8800)
++		hdev->setup = btusb_setup_aic8800;
++
+ 	if (!reset)
+ 		set_bit(HCI_QUIRK_RESET_ON_CLOSE, &hdev->quirks);
+

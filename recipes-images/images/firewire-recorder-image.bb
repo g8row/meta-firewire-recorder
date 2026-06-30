@@ -41,6 +41,7 @@ IMAGE_INSTALL:append = " \
     ffmpeg \
     x264 \
     dvgrab \
+    companion \
 "
 
 IMAGE_INSTALL:append = "${@bb.utils.contains('FIREWIRE_ENABLE_RKMPP', '1', ' rockchip-mpp v4l-rkmpp v4l-utils gstreamer1.0-rockchip gstreamer1.0 udev-conf-rockchip', '', d)}"
