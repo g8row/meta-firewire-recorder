@@ -20,14 +20,16 @@ inherit systemd
 SYSTEMD_SERVICE:${PN} = "rootfs-expand.service"
 SYSTEMD_AUTO_ENABLE = "enable"
 
-RDEPENDS:${PN} = "parted e2fsprogs-resize2fs util-linux-partprobe util-linux-findmnt"
+# partprobe is provided by the parted package (via update-alternatives), so
+# `parted` already covers it — there is no separate util-linux-partprobe package.
+RDEPENDS:${PN} = "parted e2fsprogs-resize2fs util-linux-findmnt"
 
 do_install() {
     install -d ${D}${sbindir}
-    install -m 0755 ${WORKDIR}/rootfs-expand.sh ${D}${sbindir}/rootfs-expand.sh
+    install -m 0755 ${UNPACKDIR}/rootfs-expand.sh ${D}${sbindir}/rootfs-expand.sh
 
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/rootfs-expand.service ${D}${systemd_system_unitdir}/
+    install -m 0644 ${UNPACKDIR}/rootfs-expand.service ${D}${systemd_system_unitdir}/
 }
 
 FILES:${PN} += " \
