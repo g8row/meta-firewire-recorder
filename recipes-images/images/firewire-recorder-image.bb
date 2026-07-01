@@ -107,13 +107,20 @@ pregenearte_ssh_host_keys() {
 }
 
 # 2. Disable services that are not needed on a headless appliance:
-#    rpcbind  — NFS portmapper
-#    mountnfs — NFS client mounter
-#    avahi    — mDNS/DNS-SD discovery
-#    ofono    — telephony daemon (pulled in by bluez5 recommends)
+#    rpcbind      — NFS portmapper
+#    avahi-daemon — mDNS/DNS-SD discovery
+#    ofono        — telephony daemon (pulled in by bluez5 recommends)
+# This searched for SysV-init /etc/rc*.d/ symlinks, which don't exist on
+# a systemd image — confirmed live on-device that all three were still
+# active running (systemctl list-units) despite this having "run"
+# successfully at build time; the find just never matched anything.
+# systemctl --root can enable/disable systemd units without a running
+# systemd instance, same as it would on a live system.
+do_rootfs[depends] += "systemd-systemctl-native:do_populate_sysroot"
+
 disable_unused_services() {
-    for svc in rpcbind mountnfs avahi-daemon ofono; do
-        find ${IMAGE_ROOTFS}/etc -name "*${svc}*" -path "*/rc*.d/*" -delete
+    for svc in rpcbind.service avahi-daemon.service avahi-daemon.socket ofono.service; do
+        systemctl --root=${IMAGE_ROOTFS} disable ${svc} 2>/dev/null || true
     done
 }
 

@@ -1,0 +1,13 @@
+# Companion to rfkill-unblock.service: that oneshot only unblocks whatever
+# rfkill devices exist at the moment sysinit.target is reached. Confirmed
+# live on-device that AIC8800's Bluetooth (btusb) registers its rfkill
+# entry later than WiFi does, after the oneshot has already run and
+# exited — so hci0 lands soft-blocked (the kernel's default for a newly
+# registered rfkill device) with nothing left to unblock it, and BlueZ's
+# "power on adapter" call fails forever, crash-looping companion-net.
+#
+# This rule reacts to each rfkill device as it actually appears instead of
+# guessing at a fixed boot-order delay. "unblock all" is idempotent and
+# cheap, so redoing it on every add (including ones already unblocked) is
+# harmless.
+SUBSYSTEM=="rfkill", ACTION=="add", RUN+="/usr/sbin/rfkill unblock all"

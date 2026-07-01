@@ -30,6 +30,7 @@ SRC_URI = " \
     file://companion-net.service \
     file://mediamtx.service \
     file://rfkill-unblock.service \
+    file://99-rfkill-unblock.rules \
     file://mediamtx.yml \
 "
 
@@ -80,6 +81,14 @@ do_install() {
     install -m 0644 ${UNPACKDIR}/mediamtx.service        ${D}${systemd_system_unitdir}/
     install -m 0644 ${UNPACKDIR}/rfkill-unblock.service  ${D}${systemd_system_unitdir}/
 
+    # --- udev rule: catches rfkill devices that register after
+    #     rfkill-unblock.service's one-shot has already run and exited
+    #     (confirmed live: AIC8800's Bluetooth rfkill entry appears later
+    #     than WiFi's, lands soft-blocked, and nothing re-unblocks it) ---
+    install -d ${D}${nonarch_base_libdir}/udev/rules.d
+    install -m 0644 ${UNPACKDIR}/99-rfkill-unblock.rules \
+        ${D}${nonarch_base_libdir}/udev/rules.d/
+
     # --- mediamtx config ---
     install -d ${D}${sysconfdir}
     install -m 0644 ${UNPACKDIR}/mediamtx.yml ${D}${sysconfdir}/mediamtx.yml
@@ -108,6 +117,7 @@ FILES:${PN} += " \
     ${systemd_system_unitdir}/companion-net.service \
     ${systemd_system_unitdir}/mediamtx.service \
     ${systemd_system_unitdir}/rfkill-unblock.service \
+    ${nonarch_base_libdir}/udev/rules.d/99-rfkill-unblock.rules \
     ${systemd_system_unitdir}/multi-user.target.wants/bluetooth.service \
     ${sysconfdir}/mediamtx.yml \
 "
