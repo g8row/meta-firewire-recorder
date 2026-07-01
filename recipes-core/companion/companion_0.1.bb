@@ -36,7 +36,9 @@ SRC_URI = " \
 SRC_URI[mediamtx.sha256sum] = "562f419912a8668c18216a9e8c95359ec82fbb754e4a44e2953ef62b98eec688"
 
 # The repo root is the monorepo `equip-1`; the Go module lives under companion/server.
-S = "${WORKDIR}/git/companion/server"
+# Git checkouts now unpack to ${UNPACKDIR}/${BP} (BB_GIT_DEFAULT_DESTSUFFIX = "${BP}"),
+# not the old ${WORKDIR}/git.
+S = "${UNPACKDIR}/${BP}/companion/server"
 
 inherit go systemd
 
@@ -55,6 +57,15 @@ do_compile() {
     export GOARCH GOOS CGO_ENABLED=0
     export GOFLAGS="-mod=mod -trimpath"
     cd ${S}
+
+    # OE's go-native is 1.26.2, but upstream go.mod pins `go 1.26.4` (a newer
+    # patch release). GOTOOLCHAIN=local (set by go.bbclass) refuses to fetch a
+    # newer toolchain, so the build errors out. The two are compatible patch
+    # releases, so relax the directive to the minor version to build with the
+    # toolchain OE provides. Proper long-term fix: lower the go directive in
+    # the equip-1 repo's go.mod and bump SRCREV.
+    ${GO} mod edit -go=1.26
+
     ${GO} build -o ${B}/companion-api ./cmd/companion-api
     ${GO} build -o ${B}/companion-net ./cmd/companion-net
 }
@@ -66,18 +77,18 @@ do_install() {
     install -m 0755 ${B}/companion-net ${D}${bindir}/companion-net
 
     # --- mediamtx, fetched as a prebuilt release (third-party, not ours) ---
-    install -m 0755 ${WORKDIR}/mediamtx-release/mediamtx ${D}${bindir}/mediamtx
+    install -m 0755 ${UNPACKDIR}/mediamtx-release/mediamtx ${D}${bindir}/mediamtx
 
     # --- systemd unit files ---
     install -d ${D}${systemd_system_unitdir}
-    install -m 0644 ${WORKDIR}/companion-api.service   ${D}${systemd_system_unitdir}/
-    install -m 0644 ${WORKDIR}/companion-net.service   ${D}${systemd_system_unitdir}/
-    install -m 0644 ${WORKDIR}/mediamtx.service        ${D}${systemd_system_unitdir}/
-    install -m 0644 ${WORKDIR}/rfkill-unblock.service  ${D}${systemd_system_unitdir}/
+    install -m 0644 ${UNPACKDIR}/companion-api.service   ${D}${systemd_system_unitdir}/
+    install -m 0644 ${UNPACKDIR}/companion-net.service   ${D}${systemd_system_unitdir}/
+    install -m 0644 ${UNPACKDIR}/mediamtx.service        ${D}${systemd_system_unitdir}/
+    install -m 0644 ${UNPACKDIR}/rfkill-unblock.service  ${D}${systemd_system_unitdir}/
 
     # --- mediamtx config ---
     install -d ${D}${sysconfdir}
-    install -m 0644 ${WORKDIR}/mediamtx.yml ${D}${sysconfdir}/mediamtx.yml
+    install -m 0644 ${UNPACKDIR}/mediamtx.yml ${D}${sysconfdir}/mediamtx.yml
 
     # --- enable bluetooth.service so BLE is ready before companion-net starts ---
     install -d ${D}${systemd_system_unitdir}/multi-user.target.wants
