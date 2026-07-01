@@ -9,6 +9,21 @@ EXTRA_IMAGE_FEATURES += "package-management ssh-server-openssh"
 # setup (mainline kernel), so default to software encode.
 FIREWIRE_ENABLE_RKMPP ?= "0"
 
+# AP/WiFi tethering root cause (2026-07-01, verified live via connmand -d):
+# ConnMan's own WiFi tethering does NOT use dnsmasq — it has an internal
+# DHCP server (src/tethering.c, via the gdhcp library). It successfully
+# creates the bridge and configures DHCP options, then fails enabling NAT:
+#   "iptables support missing error 92 (Protocol not available)"
+#   "Cannot enable NAT -22/Invalid argument"
+# The kernel config has CONFIG_IP_NF_IPTABLES=m and CONFIG_NF_NAT=m, but
+# `modprobe ip_tables` on-device confirmed the .ko itself was never
+# packaged into the image — nf_nat*.ko and xt_MASQUERADE.ko made it in
+# (likely pulled in transitively), but ip_tables.ko and iptable_nat.ko,
+# the two modules this specific failure needs, did not. Fixed below by
+# installing them explicitly. (dnsmasq, added under an earlier — wrong —
+# diagnosis that ConnMan shelled out to it, has been removed as dead
+# weight; it was never actually in ConnMan's tethering code path.)
+
 # Layer-local WKS keeps rootfs mount options under our control.
 # NOT enabled: this custom layout uses `--source rawcopy` for the
 # bootloader/trust/boot partitions, sourced from files this layer doesn't
@@ -53,8 +68,10 @@ IMAGE_INSTALL:append = " \
     x264 \
     dvgrab \
     companion \
-    dnsmasq \
     rootfs-expand \
+    iptables \
+    kernel-module-ip-tables \
+    kernel-module-iptable-nat \
 "
 
 IMAGE_INSTALL:append = "${@bb.utils.contains('FIREWIRE_ENABLE_RKMPP', '1', ' rockchip-mpp v4l-rkmpp v4l-utils gstreamer1.0-rockchip gstreamer1.0 udev-conf-rockchip', '', d)}"
