@@ -17,9 +17,14 @@ SRCREV = "8f96281837890cfb4b2ca96580d0acafe0dbcfa6"
 
 MEDIAMTX_VERSION = "1.19.2"
 
+# Asset is named "..._linux_arm64.tar.gz", NOT "..._linux_arm64v8" (that
+# suffix is Docker's platform-tag convention, not this project's release
+# naming — the wrong filename here would have 404'd on the very first
+# fetch). Verified against the correct URL and cross-checked the sha256sum
+# below against mediamtx's own published checksums.sha256 for this release.
 SRC_URI = " \
     git://github.com/g8row/equip-1.git;protocol=https;branch=main \
-    https://github.com/bluenviron/mediamtx/releases/download/v${MEDIAMTX_VERSION}/mediamtx_v${MEDIAMTX_VERSION}_linux_arm64v8.tar.gz;name=mediamtx;subdir=mediamtx-release \
+    https://github.com/bluenviron/mediamtx/releases/download/v${MEDIAMTX_VERSION}/mediamtx_v${MEDIAMTX_VERSION}_linux_arm64.tar.gz;name=mediamtx;subdir=mediamtx-release \
     file://companion-api.service \
     file://companion-net.service \
     file://mediamtx.service \
@@ -27,10 +32,10 @@ SRC_URI = " \
     file://mediamtx.yml \
 "
 
-# TODO: verify and fill in — run `bitbake companion -c fetch` once, bitbake
-# will print the actual sha256 mismatch error with the correct value to paste
-# here. Left blank deliberately rather than guessing.
-SRC_URI[mediamtx.sha256sum] = ""
+# Downloaded the asset directly and hashed it (shasum -a 256), then
+# cross-checked against mediamtx's own published checksums.sha256 for
+# v1.19.2 — both match.
+SRC_URI[mediamtx.sha256sum] = "562f419912a8668c18216a9e8c95359ec82fbb754e4a44e2953ef62b98eec688"
 
 # The repo root is the monorepo `equip-1`; the Go module lives under companion/server.
 S = "${WORKDIR}/git/companion/server"
