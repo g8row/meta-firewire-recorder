@@ -48,6 +48,7 @@ IMAGE_INSTALL:append = " \
     connman-tools \
     kmod \
     devmem2 \
+    wpa-supplicant-cli \
     ffmpeg \
     x264 \
     dvgrab \
