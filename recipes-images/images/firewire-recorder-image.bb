@@ -140,4 +140,27 @@ enable_systemd_timesyncd() {
         ${IMAGE_ROOTFS}/etc/systemd/system/sysinit.target.wants/systemd-timesyncd.service
 }
 
-ROOTFS_POSTPROCESS_COMMAND:append = " pregenearte_ssh_host_keys; disable_unused_services; enable_systemd_timesyncd; "
+# Bluetooth rfkill: stop systemd-rfkill from restoring a stale soft-block.
+#
+# The AIC8800D80's Bluetooth (mainline btusb) registers its rfkill switch
+# soft-blocked by default. systemd-rfkill ("Load/Save RF Kill Switch Status")
+# is socket-activated from udev on every rfkill "add" (99-systemd.rules sets
+# SYSTEMD_RFKILL=1) and RESTORES the last saved state from
+# /var/lib/systemd/rfkill/ — which is "blocked". That restore races with and
+# overrides both rfkill-unblock.service and the 99-rfkill-unblock udev rule, so
+# hci0 stays "Soft blocked: yes" no matter how often we run "rfkill unblock
+# all", BlueZ's Set Powered=true fails, and companion-net crash-loops.
+#
+# Masking systemd-rfkill removes the competitor entirely; the oneshot + udev
+# unblock (and BlueZ AutoEnable, which defaults to true) then govern and the
+# adapter stays unblocked. rfkill state no longer persists across reboots,
+# which is what we want on this appliance — radios are always meant to be on,
+# and WiFi rfkill is driven by ConnMan/wpa_supplicant, not systemd-rfkill.
+mask_systemd_rfkill() {
+    install -d ${IMAGE_ROOTFS}${sysconfdir}/systemd/system
+    for unit in systemd-rfkill.service systemd-rfkill.socket; do
+        ln -sf /dev/null ${IMAGE_ROOTFS}${sysconfdir}/systemd/system/${unit}
+    done
+}
+
+ROOTFS_POSTPROCESS_COMMAND:append = " pregenearte_ssh_host_keys; disable_unused_services; enable_systemd_timesyncd; mask_systemd_rfkill; "

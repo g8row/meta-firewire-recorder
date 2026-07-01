@@ -28,10 +28,8 @@ SRC_URI = " \
     https://github.com/bluenviron/mediamtx/releases/download/v${MEDIAMTX_VERSION}/mediamtx_v${MEDIAMTX_VERSION}_linux_arm64.tar.gz;name=mediamtx;subdir=mediamtx-release \
     file://companion-api.service \
     file://companion-net.service \
-    file://mediamtx.service \
     file://rfkill-unblock.service \
     file://99-rfkill-unblock.rules \
-    file://mediamtx.yml \
 "
 
 # Downloaded the asset directly and hashed it (shasum -a 256), then
@@ -72,13 +70,18 @@ do_install() {
     install -m 0755 ${B}/companion-net ${D}${bindir}/companion-net
 
     # --- mediamtx, fetched as a prebuilt release (third-party, not ours) ---
+    # No standalone mediamtx.service: companion-api is the mediamtx lifecycle
+    # manager (cmd/companion-api spawns and supervises it), so a separate unit
+    # was a second instance that collided with companion-api's on UDP :8000
+    # (default RTP port), crash-looping. companion-api launches mediamtx with
+    # its default config, whose ports (RTSP :8554, WebRTC :8889) are exactly
+    # what companion-api's EQUIP_MEDIAMTX_* env targets.
     install -m 0755 ${UNPACKDIR}/mediamtx-release/mediamtx ${D}${bindir}/mediamtx
 
     # --- systemd unit files ---
     install -d ${D}${systemd_system_unitdir}
     install -m 0644 ${UNPACKDIR}/companion-api.service   ${D}${systemd_system_unitdir}/
     install -m 0644 ${UNPACKDIR}/companion-net.service   ${D}${systemd_system_unitdir}/
-    install -m 0644 ${UNPACKDIR}/mediamtx.service        ${D}${systemd_system_unitdir}/
     install -m 0644 ${UNPACKDIR}/rfkill-unblock.service  ${D}${systemd_system_unitdir}/
 
     # --- udev rule: catches rfkill devices that register after
@@ -88,10 +91,6 @@ do_install() {
     install -d ${D}${nonarch_base_libdir}/udev/rules.d
     install -m 0644 ${UNPACKDIR}/99-rfkill-unblock.rules \
         ${D}${nonarch_base_libdir}/udev/rules.d/
-
-    # --- mediamtx config ---
-    install -d ${D}${sysconfdir}
-    install -m 0644 ${UNPACKDIR}/mediamtx.yml ${D}${sysconfdir}/mediamtx.yml
 
     # --- enable bluetooth.service so BLE is ready before companion-net starts ---
     install -d ${D}${systemd_system_unitdir}/multi-user.target.wants
@@ -103,7 +102,6 @@ SYSTEMD_SERVICE:${PN} = " \
     rfkill-unblock.service \
     companion-api.service \
     companion-net.service \
-    mediamtx.service \
 "
 SYSTEMD_AUTO_ENABLE = "enable"
 
@@ -115,9 +113,7 @@ FILES:${PN} += " \
     ${bindir}/mediamtx \
     ${systemd_system_unitdir}/companion-api.service \
     ${systemd_system_unitdir}/companion-net.service \
-    ${systemd_system_unitdir}/mediamtx.service \
     ${systemd_system_unitdir}/rfkill-unblock.service \
     ${nonarch_base_libdir}/udev/rules.d/99-rfkill-unblock.rules \
     ${systemd_system_unitdir}/multi-user.target.wants/bluetooth.service \
-    ${sysconfdir}/mediamtx.yml \
 "

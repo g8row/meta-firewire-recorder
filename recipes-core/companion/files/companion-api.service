@@ -1,7 +1,8 @@
 [Unit]
 Description=equip-1 Companion API
-After=network.target mediamtx.service
-Wants=mediamtx.service
+# companion-api spawns and supervises mediamtx itself (it is the mediamtx
+# lifecycle manager), so there is no separate mediamtx.service to depend on.
+After=network.target
 
 [Service]
 Type=simple
