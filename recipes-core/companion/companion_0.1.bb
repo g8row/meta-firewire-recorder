@@ -10,8 +10,11 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 # Pin to a commit on g8row/equip-1 main. Bump after pushing companion changes:
 #   git ls-remote https://github.com/g8row/equip-1.git main
-# Pushed and confirmed live on origin/main 2026-07-01.
-SRCREV = "b8607783a9f92f54c2d0ea8dbc5fc2a0b0ec3b2e"
+# go.mod's directive is now "go 1.26" (was "go 1.26.4", a hard patch pin
+# GOTOOLCHAIN=local rejected against OE's 1.26.2 go-native) — the
+# `go mod edit -go=1.26` workaround below is no longer needed against
+# this SRCREV or later.
+SRCREV = "a16b3d3f9d78265e8a819a3c49a14535e556c86c"
 
 MEDIAMTX_VERSION = "1.19.2"
 
@@ -57,15 +60,6 @@ do_compile() {
     export GOARCH GOOS CGO_ENABLED=0
     export GOFLAGS="-mod=mod -trimpath"
     cd ${S}
-
-    # OE's go-native is 1.26.2, but upstream go.mod pins `go 1.26.4` (a newer
-    # patch release). GOTOOLCHAIN=local (set by go.bbclass) refuses to fetch a
-    # newer toolchain, so the build errors out. The two are compatible patch
-    # releases, so relax the directive to the minor version to build with the
-    # toolchain OE provides. Proper long-term fix: lower the go directive in
-    # the equip-1 repo's go.mod and bump SRCREV.
-    ${GO} mod edit -go=1.26
-
     ${GO} build -o ${B}/companion-api ./cmd/companion-api
     ${GO} build -o ${B}/companion-net ./cmd/companion-net
 }
