@@ -30,6 +30,8 @@ SRC_URI = " \
     file://companion-net.service \
     file://rfkill-unblock.service \
     file://99-rfkill-unblock.rules \
+    file://mediamtx.yml \
+    file://mediamtx-launch \
 "
 
 # Downloaded the asset directly and hashed it (shasum -a 256), then
@@ -72,11 +74,21 @@ do_install() {
     # --- mediamtx, fetched as a prebuilt release (third-party, not ours) ---
     # No standalone mediamtx.service: companion-api is the mediamtx lifecycle
     # manager (cmd/companion-api spawns and supervises it), so a separate unit
-    # was a second instance that collided with companion-api's on UDP :8000
-    # (default RTP port), crash-looping. companion-api launches mediamtx with
-    # its default config, whose ports (RTSP :8554, WebRTC :8889) are exactly
-    # what companion-api's EQUIP_MEDIAMTX_* env targets.
+    # would be a second instance colliding with companion-api's on UDP :8000
+    # (default RTP port), crash-looping.
+    #
+    # But companion-api spawns mediamtx with NO config arg, and mediamtx's
+    # config-less default REJECTS all publishing (RTSP publish -> 400), so the
+    # stream never comes online. We must feed it /etc/mediamtx.yml (which has
+    # `paths: all_others:`). mediamtx only auto-searches its CWD, never /etc, so
+    # the mediamtx-launch wrapper passes the path explicitly; companion-api is
+    # pointed at it via EQUIP_MEDIAMTX_BINARY in companion-api.service.
     install -m 0755 ${UNPACKDIR}/mediamtx-release/mediamtx ${D}${bindir}/mediamtx
+    install -m 0755 ${UNPACKDIR}/mediamtx-launch ${D}${bindir}/mediamtx-launch
+
+    # --- mediamtx config (paths: all_others: — required for publishing) ---
+    install -d ${D}${sysconfdir}
+    install -m 0644 ${UNPACKDIR}/mediamtx.yml ${D}${sysconfdir}/mediamtx.yml
 
     # --- systemd unit files ---
     install -d ${D}${systemd_system_unitdir}
@@ -111,6 +123,8 @@ FILES:${PN} += " \
     ${bindir}/companion-api \
     ${bindir}/companion-net \
     ${bindir}/mediamtx \
+    ${bindir}/mediamtx-launch \
+    ${sysconfdir}/mediamtx.yml \
     ${systemd_system_unitdir}/companion-api.service \
     ${systemd_system_unitdir}/companion-net.service \
     ${systemd_system_unitdir}/rfkill-unblock.service \

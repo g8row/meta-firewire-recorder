@@ -11,7 +11,9 @@ ExecStart=/usr/bin/companion-api
 Restart=on-failure
 RestartSec=3
 Environment=EQUIP_CAPTURE_DIR=/data/captures
-Environment=EQUIP_MEDIAMTX_BINARY=/usr/bin/mediamtx
+# Wrapper that execs `mediamtx /etc/mediamtx.yml`; the config-less default
+# rejects all publishing (400), so the path must be passed. See mediamtx-launch.
+Environment=EQUIP_MEDIAMTX_BINARY=/usr/bin/mediamtx-launch
 Environment=EQUIP_MEDIAMTX_RTSP_URL=rtsp://127.0.0.1:8554/live
 Environment=EQUIP_MEDIAMTX_WHEP_PORT=8889
 Environment=EQUIP_API_PORT=8000

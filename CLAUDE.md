@@ -63,9 +63,12 @@ build uses meta-rockchip's default wic layout; `rootfs-expand` grows the rootfs 
 **`recipes-core/companion/`** — builds two Go binaries from the `g8row/equip-1` monorepo,
 plus a prebuilt `mediamtx`:
 - `companion-api` — HTTP API + embedded UI, and the **mediamtx lifecycle manager**: it
-  spawns/supervises `mediamtx` itself on mediamtx's *default* ports (RTSP :8554, WebRTC
-  :8889, RTP UDP :8000). **Never add a standalone `mediamtx.service`** — it becomes a second
-  instance and collides on UDP :8000.
+  spawns/supervises `mediamtx` itself. **Never add a standalone `mediamtx.service`** — it
+  becomes a second instance and collides on RTP UDP :8000. But companion-api spawns mediamtx
+  with **no config arg**, and mediamtx's config-less default **rejects all publishing** (RTSP
+  publish → 400), so it must be fed `/etc/mediamtx.yml` (which has `paths: all_others:`).
+  mediamtx only searches its CWD for config, never `/etc`, so `EQUIP_MEDIAMTX_BINARY` points
+  at the `mediamtx-launch` wrapper that `exec`s `mediamtx /etc/mediamtx.yml`.
 - `companion-net` — BLE GATT provisioning + ConnMan WiFi control. Powers the BT adapter over
   BlueZ D-Bus; if power-on fails it `exit(1)`s and systemd restart-loops it. So anything that
   leaves hci0 rfkill-blocked crash-loops this daemon.

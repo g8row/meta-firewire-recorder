@@ -1,0 +1,15 @@
+#!/bin/sh
+# companion-api is mediamtx's lifecycle manager: it spawns EQUIP_MEDIAMTX_BINARY
+# with no arguments (exec.Command(m.binary)). mediamtx with no config file falls
+# back to a built-in config that REJECTS all publishing (RTSP publish -> 400),
+# so the stream never comes online. mediamtx only searches its CWD for a config
+# (./mediamtx.yml, ./rtsp-simple-server.yml) — never /etc — so the path must be
+# passed explicitly.
+#
+# This wrapper is that indirection: point EQUIP_MEDIAMTX_BINARY here and it execs
+# the real mediamtx with our /etc/mediamtx.yml (which has `paths: all_others:`).
+# `exec` replaces this shell so companion-api's tracked PID is mediamtx itself,
+# keeping its supervise/terminate logic correct. This keeps a single mediamtx
+# instance (no standalone service, no :8000 collision) that actually uses the
+# config.
+exec /usr/bin/mediamtx /etc/mediamtx.yml "$@"
