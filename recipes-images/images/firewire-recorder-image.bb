@@ -64,6 +64,7 @@ IMAGE_INSTALL:append = " \
     kmod \
     devmem2 \
     wpa-supplicant-cli \
+    hostapd \
     ffmpeg \
     x264 \
     dvgrab \
