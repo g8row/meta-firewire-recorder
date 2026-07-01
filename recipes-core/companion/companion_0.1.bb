@@ -10,7 +10,10 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 # Pin to a commit on g8row/equip-1 main. Bump after pushing companion changes:
 #   git ls-remote https://github.com/g8row/equip-1.git main
-SRCREV = "a172b8ba50d5d3c3baff8a70fa4ca86b037ae1e4"
+# Still ahead of origin/main as of this pin (2026-07-01) — nothing pushed yet,
+# so this recipe can't actually fetch until that happens. Update to whatever
+# the pushed HEAD is at push time; don't assume this hash is current.
+SRCREV = "8f96281837890cfb4b2ca96580d0acafe0dbcfa6"
 
 MEDIAMTX_VERSION = "1.19.2"
 
