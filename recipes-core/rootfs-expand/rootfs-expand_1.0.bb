@@ -22,7 +22,9 @@ SYSTEMD_AUTO_ENABLE = "enable"
 
 # partprobe is provided by the parted package (via update-alternatives), so
 # `parted` already covers it — there is no separate util-linux-partprobe package.
-RDEPENDS:${PN} = "parted e2fsprogs-resize2fs util-linux-findmnt"
+# gptfdisk provides sgdisk, needed to relocate a stale backup GPT header
+# before parted can resize the partition (see rootfs-expand.sh).
+RDEPENDS:${PN} = "parted e2fsprogs-resize2fs util-linux-findmnt gptfdisk"
 
 do_install() {
     install -d ${D}${sbindir}

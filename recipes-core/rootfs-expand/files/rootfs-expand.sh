@@ -40,6 +40,17 @@ fi
 
 echo "rootfs-expand: root=$ROOT_SRC disk=$DISK partition=$PART_NUM"
 
+# When the image is smaller than the physical card, GPT's backup header
+# sits at the position matching the image's (smaller) size, not the real
+# disk. parted then refuses to resize with "Unable to satisfy all
+# constraints on the partition" — it has an interactive "Fix the GPT to
+# use the whole disk?" prompt for exactly this, but --script can't answer
+# it (confirmed live: this is what silently failed on-device — resizepart
+# errored, the script swallowed it via `|| true` below, and the sentinel
+# file still got touched, so it never actually grew). sgdisk -e relocates
+# the backup GPT to the true end of the disk first, non-interactively.
+sgdisk -e "$DISK" || true
+
 # Grow the partition table entry to use all remaining disk space. parted
 # exits non-zero when there's nothing to grow into (already maximal) —
 # that's an expected steady-state outcome on every boot after the first,
