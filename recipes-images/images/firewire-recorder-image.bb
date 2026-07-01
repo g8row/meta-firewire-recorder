@@ -15,14 +15,22 @@ FIREWIRE_ENABLE_RKMPP ?= "0"
 # creates the bridge and configures DHCP options, then fails enabling NAT:
 #   "iptables support missing error 92 (Protocol not available)"
 #   "Cannot enable NAT -22/Invalid argument"
-# The kernel config has CONFIG_IP_NF_IPTABLES=m and CONFIG_NF_NAT=m, but
-# `modprobe ip_tables` on-device confirmed the .ko itself was never
-# packaged into the image — nf_nat*.ko and xt_MASQUERADE.ko made it in
-# (likely pulled in transitively), but ip_tables.ko and iptable_nat.ko,
-# the two modules this specific failure needs, did not. Fixed below by
-# installing them explicitly. (dnsmasq, added under an earlier — wrong —
-# diagnosis that ConnMan shelled out to it, has been removed as dead
-# weight; it was never actually in ConnMan's tethering code path.)
+#
+# Corrected diagnosis (supersedes the earlier one): the failure is a
+# firewall-backend mismatch, not a missing module of the legacy stack.
+# This mainline 6.18 kernel ships an nftables-only netfilter set — it
+# builds NO ip_tables.ko / iptable_nat.ko at all (confirmed: the kernel
+# produces nft_nat/nft_masq/nft_chain_nat/nf_nat but no legacy iptable_*
+# packages), and nf_tables itself is built in (=y). So
+# `kernel-module-ip-tables` / `kernel-module-iptable-nat` are not real
+# packages and cannot be installed. The earlier CONFIG_IP_NF_IPTABLES=m
+# note was stale for this kernel.
+#
+# Fix: ConnMan is rebuilt with its nftables firewall backend (see the
+# connman bbappend) and the nftables NAT modules are installed below.
+# (dnsmasq, added under a still earlier — wrong — diagnosis that ConnMan
+# shelled out to it, remains removed; it was never in ConnMan's tethering
+# code path.)
 
 # Layer-local WKS keeps rootfs mount options under our control.
 # NOT enabled: this custom layout uses `--source rawcopy` for the
@@ -70,9 +78,9 @@ IMAGE_INSTALL:append = " \
     dvgrab \
     companion \
     rootfs-expand \
-    iptables \
-    kernel-module-ip-tables \
-    kernel-module-iptable-nat \
+    kernel-module-nft-nat \
+    kernel-module-nft-masq \
+    kernel-module-nft-chain-nat \
 "
 
 IMAGE_INSTALL:append = "${@bb.utils.contains('FIREWIRE_ENABLE_RKMPP', '1', ' rockchip-mpp v4l-rkmpp v4l-utils gstreamer1.0-rockchip gstreamer1.0 udev-conf-rockchip', '', d)}"
