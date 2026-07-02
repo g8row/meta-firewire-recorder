@@ -14,7 +14,7 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 # GOTOOLCHAIN=local rejected against OE's 1.26.2 go-native) — the
 # `go mod edit -go=1.26` workaround below is no longer needed against
 # this SRCREV or later.
-SRCREV = "a16b3d3f9d78265e8a819a3c49a14535e556c86c"
+SRCREV = "4bf4f595d5d353aa5d6607245ec3827bfdc84a29"
 
 MEDIAMTX_VERSION = "1.19.2"
 

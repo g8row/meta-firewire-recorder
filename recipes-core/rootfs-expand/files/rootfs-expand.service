@@ -1,7 +1,7 @@
 [Unit]
 Description=Expand rootfs partition and filesystem to fill the disk (first boot only)
 After=local-fs.target
-Before=companion-api.service companion-net.service mediamtx.service
+Before=companion-api.service companion-net.service
 ConditionPathExists=!/var/lib/rootfs-expand.done
 
 [Service]
